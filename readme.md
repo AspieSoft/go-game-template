@@ -16,7 +16,7 @@ git clone https://github.com/AspieSoft/go-game-template
 
 Most of the files you will need to configure are in the src directory.
 
-The init.go file is called with its 'Init' method once the game starts (a capital `Init`, not the default lowercase `init`).
+The init.go file is called with its `Init` method once the game starts (a capital `Init`, not the default lowercase `init`).
 
 ### Creating New Game Objects
 

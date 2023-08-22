@@ -326,6 +326,9 @@ func (object *GameObject) handleBorder(game *Game, thread *ThreadInfo){
 	}
 }
 
+//todo: add collision detection method to objects
+// allow object to choose between radius method, or default xy box method
+
 
 // basic methods
 func Update(game *Game, thread *ThreadInfo){

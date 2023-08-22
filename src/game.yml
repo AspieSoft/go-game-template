@@ -1,0 +1,8 @@
+MaxFPS: 120
+
+ObjectTypes: [
+  partical,
+  object,
+  player,
+  gui,
+]

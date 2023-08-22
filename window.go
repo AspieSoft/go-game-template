@@ -16,6 +16,7 @@ import (
 func main(){
 	// set default config
 	maxFPS := uint16(120)
+	inconsistentRand := true
 	objectTypes := []string{"object"}
 
 	// get game config file
@@ -26,6 +27,10 @@ func main(){
 				if v := goutil.ToType[uint16](val); v != 0 {
 					maxFPS = v
 				}
+			}
+
+			if val, ok := gameConfig["MaxFPS"]; ok {
+				inconsistentRand = goutil.ToType[bool](val)
 			}
 			
 			if val, ok := gameConfig["ObjectTypes"]; ok {
@@ -109,6 +114,7 @@ func main(){
 		},
 
 		MaxFPS: maxFPS,
+		InconsistentRand: inconsistentRand,
 	}
 
 	go func(){

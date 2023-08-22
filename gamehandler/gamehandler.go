@@ -39,9 +39,13 @@ type Game struct {
 	Canvas *fyne.Container
 	CanvasList map[string]*fyne.Container
 	CanvasListKeys []string
+
 	Window fyne.Window
 	Size CanvasSize
+
 	MaxFPS uint16
+	InconsistentRand bool
+
 	MU sync.Mutex
 }
 

@@ -1,5 +1,12 @@
+# the maximum fps that can be used by the game
 MaxFPS: 120
 
+# randomely modify level seeds to reduce patterns
+InconsistentRand: yes
+
+# a list of object types to seperate in their own container
+# seperating things into more lists can also improve performance
+# less objects will need to be refreshed when adding new objects (only the type its added to gets refreshed)
 ObjectTypes: [
   partical,
   object,

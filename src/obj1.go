@@ -11,7 +11,45 @@ import (
 
 func init(){
 	gamehandler.InitObject(func(game *gamehandler.Game) {
-		object := game.Add("object", "obj1", -game.Size.Width - 5, -game.Size.Height - 5, 5, 5, func(game *gamehandler.Game) fyne.CanvasObject {
+		size := float32(4)
+		
+		// startX := float32(0)
+		// startY := float32(0)
+
+		// fmt.Println(gameRandSeed.rand.Int63())
+		// fmt.Println(gameRandSeed.rand.Int63())
+		// fmt.Println(gameRandSeed.rand.Int63() / 10000000000)
+
+		// fmt.Println(rand.NewSource(6405275983374102578))
+
+		r := GameRandSeed.Get(0, 12)
+		border := uint8(0)
+		if r % 2 == 0 {
+			border = 2
+		}
+		if r % 3 == 0 || r % 4 == 0 {
+			border++
+		}
+
+		x := float32(0)
+		y := float32(0)
+		if border == 0 {
+			y = -game.Size.Height - size
+		}else if border == 1 {
+			x = game.Size.Width + size
+		}else if border == 2 {
+			y = game.Size.Height + size
+		}else if border == 3 {
+			x = -game.Size.Width - size
+		}
+
+		if x == 0 {
+			x = float32(GameRandSeed.Get(int(-game.Size.Width + size), int(game.Size.Width - size)))
+		}else if y == 0 {
+			y = float32(GameRandSeed.Get(int(-game.Size.Height + size), int(game.Size.Height - size)))
+		}
+
+		object := game.Add("object", "obj1", x, y, size, size, func(game *gamehandler.Game) fyne.CanvasObject {
 			res := canvas.NewRectangle(color.RGBA{255, 0, 0, 255})
 			return res
 		})

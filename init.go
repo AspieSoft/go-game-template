@@ -7,12 +7,9 @@ import (
 )
 
 func Init(gameData *gamehandler.Game){
-	//todo: may need to wait for level load menu
 	time.Sleep(1 * time.Second)
 
-	for _, objInit := range gamehandler.GameObjectInit {
-		objInit(gameData)
-	}
+	game.Init(gameData)
 
 	go GameLoop(gameData, 60, gamehandler.Update)
 	go GameLoop(gameData, 120, gamehandler.Draw)
@@ -20,5 +17,7 @@ func Init(gameData *gamehandler.Game){
 	go GameLoop(gameData, 15, gamehandler.UpdateBasic)
 	go GameLoop(gameData, 30, gamehandler.UpdateSlow)
 
-	go game.Init(gameData)
+	for _, objInit := range gamehandler.GameObjectInit {
+		objInit(gameData)
+	}
 }

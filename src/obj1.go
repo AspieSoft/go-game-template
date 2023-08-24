@@ -2,6 +2,7 @@ package game
 
 import (
 	"game/BorderMethod"
+	"game/CollisionMethod"
 	"game/gamehandler"
 	"image/color"
 
@@ -12,15 +13,6 @@ import (
 func init(){
 	gamehandler.InitObject(func(game *gamehandler.Game) {
 		size := float32(4)
-		
-		// startX := float32(0)
-		// startY := float32(0)
-
-		// fmt.Println(gameRandSeed.rand.Int63())
-		// fmt.Println(gameRandSeed.rand.Int63())
-		// fmt.Println(gameRandSeed.rand.Int63() / 10000000000)
-
-		// fmt.Println(rand.NewSource(6405275983374102578))
 
 		r := GameRandSeed.Get(0, 12)
 		border := uint8(0)
@@ -60,6 +52,7 @@ func init(){
 		object.VelY = 3
 
 		object.BorderMethod = BorderMethod.Bounce
+		object.CollisionMethod = CollisionMethod.Box
 
 		/* object.UpdateBasic = func(game *gamehandler.Game, thread *gamehandler.ThreadInfo) {
 			// fmt.Println(object.X, object.Y)

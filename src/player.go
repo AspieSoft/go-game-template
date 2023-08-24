@@ -5,7 +5,6 @@ import (
 	"game/CollisionMethod"
 	"game/gamehandler"
 	"image/color"
-	"os"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -17,10 +16,10 @@ func init(){
 	gamehandler.InitObject(func(game *gamehandler.Game) {
 		// (game.Size.Width / game.Size.Scale / 2), (game.Size.Height / game.Size.Scale / 2)
 		object := game.Add("player", "player", 0, 0, 5, 5, func(game *gamehandler.Game) fyne.CanvasObject {
-			if icon, err := os.ReadFile("./assets/objects/player/green.png"); err == nil {
+			/* if icon, err := os.ReadFile("./assets/objects/player/green.png"); err == nil {
 				res := canvas.NewImageFromResource(fyne.NewStaticResource("icon", icon))
 				return res
-			}
+			} */
 
 			res := canvas.NewCircle(color.White)
 			return res

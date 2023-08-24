@@ -417,6 +417,11 @@ func (obj1 *GameObject) IsColideing(obj2 *GameObject) bool {
 		return false
 	}
 
+	// prevent accidental self collision
+	if obj1.id == obj2.id {
+		return false
+	}
+
 	if obj1.CollisionMethod == CollisionMethod.Box && obj2.CollisionMethod == CollisionMethod.Box {
 		if (obj1.X + obj1.Width > obj2.X - obj2.Width && obj1.X - obj1.Width < obj2.X + obj2.Width) && 
 		(obj1.Y + obj1.Height > obj2.Y - obj2.Height && obj1.Y - obj1.Height < obj2.Y + obj2.Height) {

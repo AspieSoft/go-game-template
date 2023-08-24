@@ -1,7 +1,6 @@
 package game
 
 import (
-	"fmt"
 	"game/BorderMethod"
 	"game/CollisionMethod"
 	"game/gamehandler"
@@ -14,8 +13,10 @@ import (
 
 func init(){
 	gamehandler.InitObject(func(game *gamehandler.Game) {
-		object := game.Add("object", "obj2", -10, -10, 4, 4, func(game *gamehandler.Game) fyne.CanvasObject {
-			rect := canvas.NewRectangle(color.RGBA{35, 190, 15, 255})
+		rect := canvas.NewRectangle(color.RGBA{35, 190, 15, 255})
+		
+		object := game.Add("object", "obj2", 30, 20, 4, 4, func(game *gamehandler.Game) fyne.CanvasObject {
+			// rect := canvas.NewRectangle(rectColor)
 
 			return container.NewMax(rect)
 		})
@@ -42,9 +43,12 @@ func init(){
 				}
 			}
 
-			if player != nil {
-				fmt.Println("colliding:", object.IsColideing(player))
-				// object.IsColideing(player)
+			if player != nil && object.IsColideing(player) {
+				rect.FillColor = color.RGBA{255, 0, 0, 255}
+			}else if len(object.IsColideingType("object")) != 0 {
+				rect.FillColor = color.RGBA{50, 90, 200, 255}
+			}else{
+				rect.FillColor = color.RGBA{35, 190, 15, 255}
 			}
 		}
 	})

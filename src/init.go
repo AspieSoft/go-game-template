@@ -36,6 +36,7 @@ func Init(game *gamehandler.Game){
 	}()
 }
 
+// Get a random number between the min and max based on the random seed
 func (randSeed *randSeedHandler) Get(min, max int) int {
 	if min == max {
 		return min

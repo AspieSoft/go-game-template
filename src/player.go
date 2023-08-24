@@ -2,6 +2,7 @@ package game
 
 import (
 	"game/BorderMethod"
+	"game/CollisionMethod"
 	"game/gamehandler"
 	"image/color"
 	"os"
@@ -28,6 +29,7 @@ func init(){
 		object.PreferredFPS = 60
 
 		object.BorderMethod = BorderMethod.PushLimit
+		object.CollisionMethod = CollisionMethod.Radius
 
 		speed := float32(4)
 		moveX := int8(0)

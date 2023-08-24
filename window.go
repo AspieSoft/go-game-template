@@ -20,7 +20,7 @@ func main(){
 	objectTypes := []string{"object"}
 
 	// get game config file
-	if gameConfigFile, err := os.ReadFile("./src/game.yml"); err == nil {
+	if gameConfigFile, err := os.ReadFile("./src/config.yml"); err == nil {
 		gameConfig := map[string]interface{}{}
 		if err := yaml.Unmarshal(gameConfigFile, &gameConfig); err == nil {
 			if val, ok := gameConfig["MaxFPS"]; ok {

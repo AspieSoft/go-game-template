@@ -2,6 +2,9 @@ package gamehandler
 
 import (
 	"game/BorderMethod"
+	"game/CollisionMethod"
+	"game/TypeCollisionMethod"
+	"math"
 	"sync"
 
 	"fyne.io/fyne/v2"
@@ -32,6 +35,8 @@ type CanvasSize struct {
 type ThreadInfo struct {
 	FPS uint16
 	Frame uint16
+
+	// SpeedDelta can be multiplied by a consistently updating number that needs to recalculate if the max FPS is decreased in config.yml
 	SpeedDelta float32
 }
 
@@ -95,6 +100,11 @@ type GameObject struct{
 	// default: Ignore
 	BorderMethod uint8
 
+	// CollisionMethod determines how an objects collision hitbox should be calculated
+	//
+	// default: Ghost
+	CollisionMethod uint8
+
 	// Store is a basic map for storing extra data attached to an object if needed
 	Store map[string]any
 
@@ -130,10 +140,20 @@ type GameObject struct{
 	UpdateSlow func(game *Game, thread *ThreadInfo)
 }
 
+type Direction struct {
+	dist float32
+	dirX float32
+	dirY float32
+}
+
 var gameObjects map[string][]*GameObject = map[string][]*GameObject{}
 var gameObjectsMU sync.Mutex
 
+var gameColissionType map[string]uint8 = map[string]uint8{}
+
 // game methods
+
+// Add adds a new object to the game
 func (game *Game) Add(objType string, name string, x, y, width, height float32, cb func(game *Game) fyne.CanvasObject) *GameObject {
 	object := GameObject{
 		id: string(goutil.Crypt.RandBytes(64)),
@@ -161,6 +181,7 @@ func (game *Game) Add(objType string, name string, x, y, width, height float32, 
 	return &object
 }
 
+// RemoveType clears all objects of the same type
 func (game *Game) RemoveType(objType string){
 	gameObjectsMU.Lock()
 	defer gameObjectsMU.Unlock()
@@ -174,6 +195,7 @@ func (game *Game) RemoveType(objType string){
 	game.CanvasList[objType].Refresh()
 }
 
+// Get returns a list of objects by type and name
 func (game *Game) Get(objType string, name string) []*GameObject {
 	gameObjectsMU.Lock()
 	defer gameObjectsMU.Unlock()
@@ -193,6 +215,19 @@ func (game *Game) Get(objType string, name string) []*GameObject {
 	return list
 }
 
+// GetType returns a list of objects by type
+func (game *Game) GetType(objType string) []*GameObject {
+	gameObjectsMU.Lock()
+	defer gameObjectsMU.Unlock()
+
+	if _, ok := gameObjects[objType]; !ok {
+		return []*GameObject{}
+	}
+
+	return gameObjects[objType]
+}
+
+// GetID returns an object by its ID
 func (game *Game) GetID(objType string, id string) *GameObject {
 	gameObjectsMU.Lock()
 	defer gameObjectsMU.Unlock()
@@ -211,9 +246,6 @@ func (game *Game) GetID(objType string, id string) *GameObject {
 }
 
 func (game *Game) eachObject(cb func(object *GameObject)){
-	gameObjectsMU.Lock()
-	defer gameObjectsMU.Unlock()
-
 	for i := 0; i < len(game.CanvasListKeys); i++ {
 		for _, object := range gameObjects[game.CanvasListKeys[i]] {
 			cb(object)
@@ -221,8 +253,25 @@ func (game *Game) eachObject(cb func(object *GameObject)){
 	}
 }
 
+// SetTypeCollision sets a specific collision type to an object
+//
+// default: Any
+//
+// example: you can set a GUI to type ghost if objects should not interact with it
+func (game *Game) SetTypeCollision(objType string, typeCollisionMethod uint8){
+	if typeCollisionMethod > 3 {
+		typeCollisionMethod = 0
+	}
+
+	gameObjectsMU.Lock()
+	gameColissionType[objType] = typeCollisionMethod
+	gameObjectsMU.Unlock()
+}
+
 
 // object methods
+
+// Remove removes this object from the game
 func (object *GameObject) Remove(game *Game, thread *ThreadInfo){
 	gameObjectsMU.Lock()
 	defer gameObjectsMU.Unlock()
@@ -235,6 +284,9 @@ func (object *GameObject) Remove(game *Game, thread *ThreadInfo){
 	}
 }
 
+// handleBorder handles border detection math
+//
+// this method will be called by the different update methods depending on an objects PreferredFPS
 func (object *GameObject) handleBorder(game *Game, thread *ThreadInfo){
 	{ // check if object in on or past border
 		if object.X + object.Width < -game.Size.Width {
@@ -330,11 +382,270 @@ func (object *GameObject) handleBorder(game *Game, thread *ThreadInfo){
 	}
 }
 
-//todo: add collision detection method to objects
-// allow object to choose between radius method, or default xy box method
+
+// GetDistance calculates the distance between 2 objects
+func (obj1 *GameObject) GetDistance(obj2 *GameObject) float32 {
+	diffX := obj1.X - obj2.X
+	diffY := obj1.Y - obj2.Y
+	return float32(math.Sqrt(math.Pow(float64(diffX), 2) + math.Pow(float64(diffY), 2)))
+}
+
+// GetDirection is similar to the 'GetDistance' method,
+// but this method aso returns the direction of an object and the difference between the x and y distance
+//
+// example use: velX += Direction.dirX * speed; velY += Direction.dirY * speed (to move twards an object)
+func (obj1 *GameObject) GetDirection(obj2 *GameObject) Direction {
+	diffX := obj1.X - obj2.X
+	diffY := obj1.Y - obj2.Y
+	dist := float32(math.Sqrt(math.Pow(float64(diffX), 2) + math.Pow(float64(diffY), 2)))
+
+	dirX := (1/dist * diffX)
+	dirY := (1/dist * diffY)
+
+	return Direction{
+		dist,
+		dirX,
+		dirY,
+	}
+}
+
+// IsColideing returns true if this object is colliding with the target object
+//
+// this method calculates differently depending on an objects CollisionMethod
+func (obj1 *GameObject) IsColideing(obj2 *GameObject) bool {
+	if obj1.CollisionMethod == CollisionMethod.Ghost || obj2.CollisionMethod == CollisionMethod.Ghost {
+		return false
+	}
+
+	if obj1.CollisionMethod == CollisionMethod.Box && obj2.CollisionMethod == CollisionMethod.Box {
+		if (obj1.X + obj1.Width > obj2.X - obj2.Width && obj1.X - obj1.Width < obj2.X + obj2.Width) && 
+		(obj1.Y + obj1.Height > obj2.Y - obj2.Height && obj1.Y - obj1.Height < obj2.Y + obj2.Height) {
+			return true
+		}
+	}else if obj1.CollisionMethod == CollisionMethod.Radius && obj2.CollisionMethod == CollisionMethod.Radius {
+		dir := obj1.GetDirection(obj2)
+		return dir.dist <= float32(math.Sqrt(math.Pow(float64(obj1.Width + obj2.Width), 2) + math.Pow(float64(obj1.Height + obj2.Height), 2))) / (math.Pi / 2.25)
+	}else if obj1.CollisionMethod == CollisionMethod.Box && obj2.CollisionMethod == CollisionMethod.Radius {
+		size := float32(math.Sqrt(math.Pow(float64(obj2.Width), 2) + math.Pow(float64(obj2.Height), 2))) / (math.Pi / 2.25)
+
+		// skip math loop if object is too far away
+		if dist := obj1.GetDistance(obj2); dist > size + (obj1.Width * 2) && dist > size + (obj1.Height * 2) {
+			return false
+		}
+
+		for w := -obj1.Width; w <= obj1.Width; w += obj2.Width / math.Pi {
+			for h := -obj1.Height; h <= obj1.Height; h += obj2.Height / math.Pi {
+				diffX := (obj1.X + w) - obj2.X
+				diffY := (obj1.Y + h) - obj2.Y
+				dist := float32(math.Sqrt(math.Pow(float64(diffX), 2) + math.Pow(float64(diffY), 2)))
+
+				if dist <= size {
+					return true
+				}
+			}
+
+			// cover final height check
+			diffX := (obj1.X + w) - obj2.X
+			diffY := (obj1.Y + obj1.Height) - obj2.Y
+			dist := float32(math.Sqrt(math.Pow(float64(diffX), 2) + math.Pow(float64(diffY), 2)))
+			if dist <= size {
+				return true
+			}
+		}
+
+		// cover final width checks
+		for h := -obj1.Height; h <= obj1.Height; h += obj2.Height / math.Pi {
+			diffX := (obj1.X + obj1.Width) - obj2.X
+			diffY := (obj1.Y + h) - obj2.Y
+			dist := float32(math.Sqrt(math.Pow(float64(diffX), 2) + math.Pow(float64(diffY), 2)))
+			if dist <= size {
+				return true
+			}
+		}
+
+		// cover final width and height check
+		diffX := (obj1.X + obj1.Width) - obj2.X
+		diffY := (obj1.Y + obj1.Height) - obj2.Y
+		dist := float32(math.Sqrt(math.Pow(float64(diffX), 2) + math.Pow(float64(diffY), 2)))
+		if dist <= size {
+			return true
+		}
+
+		return false
+	}else if obj1.CollisionMethod == CollisionMethod.Radius && obj2.CollisionMethod == CollisionMethod.Box {
+		size := float32(math.Sqrt(math.Pow(float64(obj1.Width), 2) + math.Pow(float64(obj1.Height), 2))) / (math.Pi / 2.25)
+
+		// skip math loop if object is too far away
+		if dist := obj1.GetDistance(obj2); dist > size + (obj1.Width * 2) && dist > size + (obj1.Height * 2) {
+			return false
+		}
+
+		for w := -obj2.Width; w <= obj2.Width; w += obj1.Width / math.Pi {
+			for h := -obj2.Height; h <= obj2.Height; h += obj1.Height / math.Pi {
+				diffX := (obj2.X + w) - obj1.X
+				diffY := (obj2.Y + h) - obj1.Y
+				dist := float32(math.Sqrt(math.Pow(float64(diffX), 2) + math.Pow(float64(diffY), 2)))
+
+				if dist <= size {
+					return true
+				}
+			}
+
+			// cover final height check
+			diffX := (obj2.X + w) - obj1.X
+			diffY := (obj2.Y + obj2.Height) - obj1.Y
+			dist := float32(math.Sqrt(math.Pow(float64(diffX), 2) + math.Pow(float64(diffY), 2)))
+			if dist <= size {
+				return true
+			}
+		}
+
+		// cover final width checks
+		for h := -obj2.Height; h <= obj2.Height; h += obj1.Height / math.Pi {
+			diffX := (obj2.X + obj2.Width) - obj1.X
+			diffY := (obj2.Y + h) - obj1.Y
+			dist := float32(math.Sqrt(math.Pow(float64(diffX), 2) + math.Pow(float64(diffY), 2)))
+			if dist <= size {
+				return true
+			}
+		}
+
+		// cover final width and height check
+		diffX := (obj2.X + obj2.Width) - obj1.X
+		diffY := (obj2.Y + obj2.Height) - obj1.Y
+		dist := float32(math.Sqrt(math.Pow(float64(diffX), 2) + math.Pow(float64(diffY), 2)))
+		if dist <= size {
+			return true
+		}
+
+		return false
+	}
+
+	return false
+}
+
+// IsColideingAny returns a list of colliding objects
+func (object *GameObject) IsColideingAny() []*GameObject {
+	colType := uint8(0)
+	if v, ok := gameColissionType[object.objType]; ok {
+		colType = v
+	}
+
+	list := []*GameObject{}
+	if colType == TypeCollisionMethod.Ghost {
+		return list
+	}
+
+	if colType == TypeCollisionMethod.Self {
+		if objList, ok := gameObjects[object.objType]; ok {
+			for _, obj := range objList {
+				if object.IsColideing(obj) {
+					list = append(list, obj)
+				}
+			}
+		}
+
+		return list
+	}
+
+	for key, objList := range gameObjects {
+		cType := uint8(0)
+		if v, ok := gameColissionType[key]; ok {
+			cType = v
+		}
+
+		if cType == TypeCollisionMethod.Ghost ||
+		(object.objType != key && cType == TypeCollisionMethod.Self) ||
+		(object.objType == key && colType == TypeCollisionMethod.Other) {
+			continue
+		}
+
+		for _, obj := range objList {
+			if object.IsColideing(obj) {
+				list = append(list, obj)
+			}
+		}
+	}
+
+	return list
+}
+
+// IsColideingAny returns a list of colliding objects of a specific type
+func (object *GameObject) IsColideingType(objType string) []*GameObject {
+	colType := uint8(0)
+	if v, ok := gameColissionType[object.objType]; ok {
+		colType = v
+	}
+
+	list := []*GameObject{}
+	if colType == TypeCollisionMethod.Ghost ||
+	(object.objType != objType && colType == TypeCollisionMethod.Self) ||
+	(object.objType == objType && colType == TypeCollisionMethod.Other) {
+		return list
+	}
+
+	if objList, ok := gameObjects[objType]; ok {
+		cType := uint8(0)
+		if v, ok := gameColissionType[objType]; ok {
+			cType = v
+		}
+
+		if cType == TypeCollisionMethod.Ghost ||
+		(object.objType != objType && cType == TypeCollisionMethod.Self) {
+			return list
+		}
+		
+		for _, obj := range objList {
+			if object.IsColideing(obj) {
+				list = append(list, obj)
+			}
+		}
+	}
+
+	return list
+}
+
+// IsColideingAny returns a list of colliding objects of a specific type and name
+func (object *GameObject) IsColideingName(objType string, name string) []*GameObject {
+	colType := uint8(0)
+	if v, ok := gameColissionType[object.objType]; ok {
+		colType = v
+	}
+
+	list := []*GameObject{}
+	if colType == TypeCollisionMethod.Ghost ||
+	(object.objType != objType && colType == TypeCollisionMethod.Self) ||
+	(object.objType == objType && colType == TypeCollisionMethod.Other) {
+		return list
+	}
+
+	if objList, ok := gameObjects[objType]; ok {
+		cType := uint8(0)
+		if v, ok := gameColissionType[objType]; ok {
+			cType = v
+		}
+
+		if cType == TypeCollisionMethod.Ghost ||
+		(object.objType != objType && cType == TypeCollisionMethod.Self) {
+			return list
+		}
+		
+		for _, obj := range objList {
+			if obj.name == name && object.IsColideing(obj) {
+				list = append(list, obj)
+			}
+		}
+	}
+
+	return list
+}
 
 
 // basic methods
+
+// Update should run on a GameLoop thread
+//
+// recommended: 60 fps
 func Update(game *Game, thread *ThreadInfo){
 	game.eachObject(func(object *GameObject) {
 		if object.PreferredFPS >= 60 && object.PreferredFPS < 120 { 
@@ -347,6 +658,9 @@ func Update(game *Game, thread *ThreadInfo){
 	})
 }
 
+// Draw should run on a GameLoop thread
+//
+// recommended: 120 fps
 func Draw(game *Game, thread *ThreadInfo){
 	game.eachObject(func(object *GameObject) {
 		if object.PreferredFPS == 0 || object.PreferredFPS > 120 { 
@@ -406,6 +720,9 @@ func Draw(game *Game, thread *ThreadInfo){
 	})
 }
 
+// UpdateBasic should run on a GameLoop thread
+//
+// recommended: 15 fps
 func UpdateBasic(game *Game, thread *ThreadInfo){
 	game.eachObject(func(object *GameObject) {
 		if object.PreferredFPS >= 15 && object.PreferredFPS < 30 { 
@@ -418,6 +735,9 @@ func UpdateBasic(game *Game, thread *ThreadInfo){
 	})
 }
 
+// UpdateSlow should run on a GameLoop thread
+//
+// recommended: 30 fps
 func UpdateSlow(game *Game, thread *ThreadInfo){
 	game.eachObject(func(object *GameObject) {
 		if object.PreferredFPS >= 30 && object.PreferredFPS < 60 { 

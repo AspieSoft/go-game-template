@@ -1,8 +1,8 @@
 package game
 
 import (
-	"game/BorderMethod"
-	"game/CollisionMethod"
+	"game/enum/BorderMethod"
+	"game/enum/CollisionMethod"
 	"game/gamehandler"
 	"image/color"
 	"os"

@@ -1,9 +1,9 @@
 package gamehandler
 
 import (
-	"game/BorderMethod"
-	"game/CollisionMethod"
-	"game/TypeCollisionMethod"
+	"game/enum/BorderMethod"
+	"game/enum/CollisionMethod"
+	"game/enum/TypeCollisionMethod"
 	"math"
 	"sync"
 

@@ -428,8 +428,8 @@ func (obj1 *GameObject) IsColideing(obj2 *GameObject) bool {
 			return true
 		}
 	}else if obj1.CollisionMethod == CollisionMethod.Radius && obj2.CollisionMethod == CollisionMethod.Radius {
-		dir := obj1.GetDirection(obj2)
-		return dir.dist <= float32(math.Sqrt(math.Pow(float64(obj1.Width + obj2.Width), 2) + math.Pow(float64(obj1.Height + obj2.Height), 2))) / (math.Pi / 2.25)
+		dist := obj1.GetDistance(obj2)
+		return dist <= float32(math.Sqrt(math.Pow(float64(obj1.Width + obj2.Width), 2) + math.Pow(float64(obj1.Height + obj2.Height), 2))) / (math.Pi / 2.25)
 	}else if obj1.CollisionMethod == CollisionMethod.Box && obj2.CollisionMethod == CollisionMethod.Radius {
 		size := float32(math.Sqrt(math.Pow(float64(obj2.Width), 2) + math.Pow(float64(obj2.Height), 2))) / (math.Pi / 2.25)
 
@@ -481,7 +481,7 @@ func (obj1 *GameObject) IsColideing(obj2 *GameObject) bool {
 		size := float32(math.Sqrt(math.Pow(float64(obj1.Width), 2) + math.Pow(float64(obj1.Height), 2))) / (math.Pi / 2.25)
 
 		// skip math loop if object is too far away
-		if dist := obj1.GetDistance(obj2); dist > size + (obj1.Width * 2) && dist > size + (obj1.Height * 2) {
+		if dist := obj2.GetDistance(obj1); dist > size + (obj2.Width * 2) && dist > size + (obj2.Height * 2) {
 			return false
 		}
 
